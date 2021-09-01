@@ -39,8 +39,8 @@ function DP(items,capacity)
             if items[j].weight <= i # if  new item is lighter or equal to the current capacity being considered
                 option1 = T[i,j-1] # Use previous item 
 
-                option2_1 =  items[j].value    #Select current iten
-                residual_weight = i - items[j+option1_index].weight    #calculate residual weight               
+                option2_1 =  items[j].value    #Select current itenm
+                residual_weight = i - items[j].weight    #calculate residual weight after selecting current item           
                 option2_2 = residual_weight > 0 ? T[residual_weight,j-1] : 0  # Select best item for residual weight as per DP table         
                 T[i,j] = max(option1,option2_1+option2_2)
             end
@@ -64,19 +64,33 @@ function DP(items,capacity)
         end
     end
 
-    return selection
+    return selection,T[capacity,n_items] #Last element of the matrix gives value
+
+end
+##################Sample Data used for Testing#############################
+
+# items2 = [
+#     (index=1,value = 5,weight = 4),
+#     (index=2,value = 6,weight = 5),
+#     (index=3,value = 3,weight = 2)
+# ]
+
+# capacity2 = 9
+
+# selected_items,value = DP(items2,capacity2)
+
+#############################################################################
+
+function render_output(item_count,selected_items,value,optimality_flag)
+    results = fill("0",item_count)
+    results[selected_items] .= "1"
+    println("$value $optimality_flag")
+    println(join(results," "))
 
 end
 
 
-items2 = [
-    (index=1,value = 5,weight = 4),
-    (index=2,value = 6,weight = 5),
-    (index=3,value = 3,weight = 2)
-]
+selected_items,value = DP(items,capacity)
+render_output(item_count,selected_items,value,0)
 
-capacity2 = 9
 
-items_selected = DP(items2,capacity2)
-
-render_output(3,items_selected,11,0)
