@@ -1,51 +1,38 @@
+input_data = ARGS[1]
+
+f = open(input_data)
+input_data = read(f,String)
+close(f)
+
+lines = split(input_data,'\n')
+
+items = []
+
+firstLine = split(lines[1])
+item_count = parse(Int64,firstLine[1])
+capacity = parse(Int64,firstLine[2])
+
+for i ∈ range(2,stop=item_count+1)
+    line = lines[i]
+    parts = split(line)
+    push!(items,(index=i-1,value=parse(Int64,parts[1]),weight = parse(Int64,parts[2])))
+
+end
+
+
+
 using DataStructures
 
 
-
-#Sample problem
-
-items = [
-    (index=1,value = 45,weight = 5),
-    (index=2,value = 48,weight = 8),
-    (index=3,value = 35,weight = 3)
-]
-
-K = 10
 
 global N_items = length(items)
 
 global item_weights = map(x-> x.weight, items)
 global item_values = map(x-> x.value, items)
 
-#Get cumulative measures for   items
-item_cum_weights = cumsum(item_weights)
-item_cum_values = cumsum(item_values)
 
-#Sort items by density
-items_sorted = sort(items , by = x -> x.value/x.weight,rev=true)
-
-#Get weights of items
-item_sorted_weights = map(x-> x.weight, items_sorted)
-item_sorted_values = map(x-> x.value, items_sorted)
-
-#Get cumulative measures for  sorted items
-item_cum_sorted_weights = cumsum(item_sorted_weights)
-item_cum_sorted_values = cumsum(item_sorted_values)
-
-#Get first index where knap sack capacity is exceeded
-I = findfirst(x-> x > K, item_cum_sorted_weights)
-
-#Get optimistic estimate -> Convert this to a function
-optimistic_value  = item_cum_sorted_values[I-1] #Take all of these items
-fraction = (K - item_cum_sorted_weights[I-1])/item_sorted_weights[I]
-fractional_value = fraction * item_sorted_values[I]
-optimistic_value += fractional_value 
-
-#Get optimistic Knapsack
-optimistic_knapsack = push!(fill(1.0,I-1),fraction)
 
 #Function to build an optimistic knapsack given constraints on selecting items
-
 function get_optimistic_estimate(items,K,constraint )
     n_items = length(items)
     dropped = findall(x->x==0,constraint) 
@@ -80,22 +67,15 @@ function get_optimistic_estimate(items,K,constraint )
 end
 
 
-##Using Depth First Search
-parent = Int[]
-#parent = nothing
-
-
-#Dictionary to hold value,room and estimates
-D = Dict(parent =>(value=0,room=K,estimate=optimal_value))
-
-function produce_children(parent::Array{Any,1})
+#Given a state/parent in array for produce children
+function produce_children(parent::Array{Int64,1})
     return [push!(copy(parent),1),push!(copy(parent),0)]
 end
 
-#produce_children = (parent::Array{Any,1}) -> [push!(copy(parent),1),push!(copy(parent),0)]
+
 
 ##Function to get updated value,room and estimate for a child produced by produce_children
-function evaluate_state(state::Array{Any,1})
+function evaluate_state(state::Array{Int64,1})
 
     #Get indices corresponding to 1 in the state
     selected = findall(x-> x==1,state)
@@ -114,22 +94,16 @@ end
 
 
 
-######### Development ############
-
-s = Stack{Array{Int64,1}}()
-child1,child2= produce_children(parent)
-push!(s,child1)
-push!(s,child2)
-
-### Convert to Struct for ease of use
+### Convert to a Struct for ease of use
 struct State    
-    state::Array{Any,1} #Also gives the path to the node
-    value::Int
+    state::Array{Int64,1} #Also gives the path to the node
+    value::Union{Int64,Nothing}
     room ::Int
-    estimate::Float
+    estimate::Union{Float64,Nothing}
 end
 
-function produce_children_(parent::State)
+
+function produce_children(parent::State)
     child1,child2 = produce_children(parent.state)
     c1 = evaluate_state(child1)
     c2 = evaluate_state(child2)
@@ -167,7 +141,7 @@ function DFS2(parent::State)
             end
 
         else
-            child1_,child2_ = produce_children_(child)
+            child1_,child2_ = produce_children(child)
             pushfirst!(to_explore,child2_)
             pushfirst!(to_explore,child1_)
         end
@@ -184,36 +158,19 @@ end
 
 
 
-##Testing
 
-parent = []
 
-child1,child2 = produce_children(parent)
-evaluate_state(child1)
-evaluate_state(child2)
-
-child3,child4 = produce_children(child1)
-evaluate_state(child3)
-evaluate_state(child4)
-
-child5,child6 = produce_children(child4)
-evaluate_state(child5)
-evaluate_state(child6)
-
-#Test 2
-
-parent = State([],0,0,0.0)
-child1,child2 = produce_children_(parent)
-child3,child4 = produce_children_(child1)
-
-DFS2(parent)
-
-#Multiple dipstach
-
-function add(x::Int,y::Int)
-    return x+y
+"""
+Function to render output in correct form
+item_count: No of items to select from
+selected_items: Boolean vector represneting items selected
+value: Value of solution
+optimality_flag = 0
+"""
+function render_output(item_count,selected_items,value,optimality_flag)
+    println("$value $optimality_flag")
+    println(join(selected_items," "))
 end
 
-function add(x::String,y::String)
-    return x*y
-end
+solution = DFS2(parent)
+render_output(item_count,solution.state,solution.value,0)
