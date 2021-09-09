@@ -19,6 +19,9 @@ for i ∈ range(2,stop=item_count+1)
 
 end
 
+# Remove any items with weight greater than capacity of the knapsack
+items= filter(item-> item.weight <= capacity,items)
+
 
 
 using DataStructures
@@ -33,13 +36,14 @@ global item_values = map(x-> x.value, items)
 
 
 #Function to build an optimistic knapsack given constraints on selecting items
-function get_optimistic_estimate(items,K,constraint )
+#Constraint is ewuivalent to state or how many items have been selected/dropoed
+function get_optimistic_estimate(items,capacity,constraint )
     n_items = length(items)
     dropped = findall(x->x==0,constraint) 
     selected = setdiff(collect(1:n_items),dropped) 
 
     selected_items = items[selected]
-    #Sort items by density
+    #Sort items by value density
     items_sorted = sort(selected_items , by = x -> x.value/x.weight,rev=true)
 
     #Get weights of items
@@ -52,13 +56,13 @@ function get_optimistic_estimate(items,K,constraint )
 
    
 
-    if item_cum_sorted_weights[end] < K #if selected items are less than knapsack capacity
+    if item_cum_sorted_weights[end] < capacity #if selected items are less than knapsack capacity
         I = length(selected_items)
         optimistic_value = item_cum_sorted_values[I] #select all items
     else
-        I = findfirst(x-> x > K, item_cum_sorted_weights)
+        I = findfirst(x-> x > capacity, item_cum_sorted_weights)
         optimistic_value  = item_cum_sorted_values[I-1] #Take all of these items
-        fraction = (K - item_cum_sorted_weights[I-1])/item_sorted_weights[I]
+        fraction = (capacity - item_cum_sorted_weights[I-1])/item_sorted_weights[I]
         fractional_value = fraction * item_sorted_values[I]
         optimistic_value += fractional_value 
     end 
@@ -83,11 +87,11 @@ function evaluate_state(state::Array{Int64,1})
     
 
     S_weights = sum(item_weights[selected]) 
-    if S_weights < K
-        return (value = sum(item_values[selected]),room = K - S_weights,
-                    estimate= get_optimistic_estimate(items,K,state ) )
+    if S_weights < capacity
+        return (value = sum(item_values[selected]),room = capacity - S_weights,
+                    estimate= get_optimistic_estimate(items,capacity,state ) )
     else
-        return (value = nothing, room = K - S_weights,estimate=nothing )
+        return (value = nothing, room = capacity - S_weights,estimate=nothing )
     end
 
 end
@@ -172,5 +176,6 @@ function render_output(item_count,selected_items,value,optimality_flag)
     println(join(selected_items," "))
 end
 
+parent = State(Int64[],0,0,0.0)
 solution = DFS2(parent)
 render_output(item_count,solution.state,solution.value,0)
