@@ -1,6 +1,6 @@
-input_data = ARGS[1]
+input_file = ARGS[1]
 
-f = open(input_data)
+f = open(input_file)
 input_data = read(f,String)
 close(f)
 
@@ -19,11 +19,21 @@ for i ∈ range(2,stop=item_count+1)
 
 end
 
+
+# Sort items in decreasing order of value denisty
+original_items = sort(items , by = x -> x.value/x.weight,rev=true)
+
+
 # Remove any items with weight greater than capacity of the knapsack
-items= filter(item-> item.weight <= capacity,items)
+dropped_items = filter(item-> item.weight > capacity,original_items)
+items= filter(item-> item.weight <= capacity,original_items)
 
 
 
+
+
+#import Pkg
+#Pkg.add("DataStructures")
 using DataStructures
 
 
@@ -44,7 +54,9 @@ function get_optimistic_estimate(items,capacity,constraint )
 
     selected_items = items[selected]
     #Sort items by value density
-    items_sorted = sort(selected_items , by = x -> x.value/x.weight,rev=true)
+    #Comment this out given  items have already been sorted up front
+    #items_sorted = sort(selected_items , by = x -> x.value/x.weight,rev=true)
+    items_sorted = selected_items
 
     #Get weights of items
     item_sorted_weights = map(x-> x.weight, items_sorted)
@@ -163,19 +175,33 @@ end
 
 
 
-
 """
 Function to render output in correct form
 item_count: No of items to select from
-selected_items: Boolean vector represneting items selected
+selected_items: List of selected items by index
 value: Value of solution
 optimality_flag = 0
 """
 function render_output(item_count,selected_items,value,optimality_flag)
+    results = fill("0",item_count)
+    results[selected_items] .= "1"
     println("$value $optimality_flag")
-    println(join(selected_items," "))
+    println(join(results," "))
+
 end
 
 parent = State(Int64[],0,0,0.0)
 solution = DFS2(parent)
-render_output(item_count,solution.state,solution.value,0)
+
+#Get solution
+solution_state = solution.state
+
+#Get selected items
+sel_items = items[solution_state .== 1]
+
+#Get indices of selected items
+sel_items_i = [item.index for item in sel_items]
+
+render_output(item_count,sel_items_i,solution.value,0)
+
+
