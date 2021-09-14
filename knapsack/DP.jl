@@ -1,6 +1,6 @@
-input_data = ARGS[1]
+input_file = ARGS[1]
 
-f = open(input_data)
+f = open(input_file)
 input_data = read(f,String)
 close(f)
 
@@ -21,6 +21,9 @@ end
 
 using OffsetArrays
 
+
+#Filter only items that are lighter than the knapsack capacity
+items = filter(item-> item.weight <= capacity,items)
 
 """
 Input is list of named tuples and capacity of Knapsack
@@ -59,7 +62,7 @@ function DP(items,capacity)
             j_ -= 1
         else
             push!(selection,j_)
-            i_ = capacity - items[j_].weight
+            i_ = i_ - items[j_].weight
             j_ -= 1
         end
     end
@@ -80,7 +83,13 @@ end
 # selected_items,value = DP(items2,capacity2)
 
 #############################################################################
-
+"""
+Function to render output in correct form
+item_count: No of items to select from
+selected_items: List of selected items by index
+value: Value of solution
+optimality_flag = 0
+"""
 function render_output(item_count,selected_items,value,optimality_flag)
     results = fill("0",item_count)
     results[selected_items] .= "1"
@@ -91,6 +100,13 @@ end
 
 
 selected_items,value = DP(items,capacity)
-render_output(item_count,selected_items,value,0)
+
+#Get selected items
+sel_items = items[selected_items]
+
+#Get indices of selected items
+sel_items_i = [item.index for item in sel_items]
+
+render_output(item_count,sel_items_i,value,0)
 
 
