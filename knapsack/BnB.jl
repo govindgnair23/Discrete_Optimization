@@ -21,12 +21,12 @@ end
 
 
 # Sort items in decreasing order of value denisty
-original_items = sort(items , by = x -> x.value/x.weight,rev=true)
+sorted_items = sort(items , by = x -> x.value/x.weight,rev=true)
 
 
 # Remove any items with weight greater than capacity of the knapsack
-dropped_items = filter(item-> item.weight > capacity,original_items)
-items= filter(item-> item.weight <= capacity,original_items)
+dropped_items = filter(item-> item.weight > capacity,sorted_items)
+items= filter(item-> item.weight <= capacity,sorted_items)
 
 
 
@@ -54,8 +54,9 @@ function get_optimistic_estimate(items,capacity,constraint )
 
     selected_items = items[selected]
     #Sort items by value density
-    #Comment this out given  items have already been sorted up front
+    ###Comment this out given  items have already been sorted up front###
     #items_sorted = sort(selected_items , by = x -> x.value/x.weight,rev=true)
+
     items_sorted = selected_items
 
     #Get weights of items
@@ -68,9 +69,9 @@ function get_optimistic_estimate(items,capacity,constraint )
 
    
 
-    if item_cum_sorted_weights[end] < capacity #if selected items are less than knapsack capacity
+    if item_cum_sorted_weights[end] < capacity #if  sum of weight of selected items are less than knapsack capacity
         I = length(selected_items)
-        optimistic_value = item_cum_sorted_values[I] #select all items
+        optimistic_value = item_cum_sorted_values[I] #select all items except one specified as dropped in constraint
     else
         I = findfirst(x-> x > capacity, item_cum_sorted_weights)
         optimistic_value  = item_cum_sorted_values[I-1] #Take all of these items
