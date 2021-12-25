@@ -19,35 +19,44 @@ using StatsBase
 #Function to calculate distance given coordinates
 distance(city1,city2) = sqrt((city1[1]-city2[1])^2 + (city1[2]-city2[2])^2)
 
-#Function to calculate length of two edges in a sequence
-#Computes distance node1-node2 and node3-node4
-function distance2opt((node1,node2,node3,node4),)
-     return distance(coordinates[node1],coordinates[node2]) + distance(coordinates[node3],coordinates[node4])
+#Function to eliminate out of bound error by getting element from requied index
+function get_index(array,i)
+    if i < 1
+        return array[end]
+    elseif i > N_cities
+        return array[1]
+    else
+        return array[i]
+    end
 end
 
 """
-Function to generate a new candidate with Two Opt algorithm and return Δ = dist(new_route) - dist(old_route)
+Function to generate a new candidate with Two Opt algorithm and return new route distance
 """
-function do_two_opt(route::Array{Int64,1},i::Int64,k::Int64)
+function do_two_opt(route::Array{Int64,1},i::Int64,k::Int64,route_distance::Float64)
+
+    #If i =1 and k = len(route) route is just reversed
+    if i==1 && k==length(route)
+        return route, route_distance 
+    end
     L = length(route)
     new_route = Array{Int64,1}(undef,L)
     #Get nodes 1 to i-1
-    #append!(new_route,(route[1:i-1]))
-    new_route[1:i-1] = route[1:i-1]
+    if i > 1;new_route[1:i-1] = route[1:i-1];end
+    
     #Take i to k and swap input_data
-    #append!(new_route,(reverse(route[i:k])))
     new_route[i:k] = reverse(route[i:k])
-    #Take k+1:n and add
-    #append!(new_route,(route[k+1:end]))
-    new_route[k+1:end] = route[k+1:end]
 
-    replaced_edge_distance = distance(coordinates[route[i-1]],coordinates[route[i]]) + 
-                             distance(coordinates[route[k]],coordinates[route[k+1]])
-    new_edge_distance = distance(coordinates[new_route[i-1]],coordinates[new_route[i]]) + 
-                        distance(coordinates[new_route[k]],coordinates[new_route[k+1]])
+    #Take k+1:n and add
+    if k < L;new_route[k+1:end] = route[k+1:end];end
+
+    replaced_edge_distance = distance(coordinates[get_index(route,i-1)],coordinates[route[i]]) + 
+                                distance(coordinates[route[k]],coordinates[get_index(route,k+1)])
+    new_edge_distance = distance(coordinates[get_index(route,i-1)],coordinates[new_route[i]]) + 
+                        distance(coordinates[new_route[k]],coordinates[get_index(route,k+1)])
 
     Δ = new_edge_distance - replaced_edge_distance # Negative value means improvement
-    return (new_route,Δ)
+    return (new_route,route_distance + Δ)
 end
 
 #Function to compute distance traversed in a given route..
@@ -60,28 +69,54 @@ function calc_distance(route) # Not working correctly.
     return total_dist
 end
 
+function check_improvement!(i,k,best_route,best_route_distance,improved)
+    if i == 1 & k == N_cities
+        return best_route, best_route_distance, improved
+    end
+    new_route,Δ = do_two_opt(best_route,i,k)
+    if Δ < 0
+        best_route = new_route
+        best_route_distance += Δ
+        improved = true
+    end
+    #return best_route, best_route_distance, improved
+end
+
+
+
 ##Do exhaustive search using two opt
 """
 Function to perform two opt, get best route and distance.
 """
-function two_opt_exhaustive(route) #Current implementation requires to cycle through all ordering representations
-                                   # E.g. 4,3,1,5,2 and 3.1.5.2.4
+function two_opt_exhaustive(route) 
+    route_distance = calc_distance(route)
     best_route = route
-    for i ∈ 2:N_cities-2
-        for k ∈ i+1:N_cities-1
-            new_route,Δ = do_two_opt(best_route,i,k)
-            if Δ < 0
-                return two_opt_exhaustive(new_route)
-            end  
+    best_route_distance = route_distance    
+    N_cities = length(route)
+
+    for i ∈ 1:N_cities-1
+        for k ∈ i+1:N_cities
+            new_route,new_route_distance = do_two_opt(route,i,k,route_distance)
+            if new_route_distance < best_route_distance
+                best_route = new_route
+                best_route_distance  = new_route_distance
+            end
         end
     end
-    best_route_distance = calc_distance(best_route)
-    return best_route_distance, best_route
+    
+    if best_route_distance == route_distance
+        return  best_route_distance, best_route
+    end
+    
+    return two_opt_exhaustive(best_route)
 
+    
 end
 
 
-two_opt_exhaustive(collect([3,4,2,1,5]))
+
+
+two_opt_exhaustive(collect([3,2,4,1,5]))
 
 ## To do: This works only if starting and ending node are same as in optimal route
 
@@ -96,7 +131,7 @@ two_opt_exhaustive(collect([3,4,2,1,5]))
 
 ######################### Testing ##############
 
-
+## TO DO: Create a Struct with wrap around indexing
 
 
 route = collect(1:5)
@@ -106,3 +141,4 @@ new_route,delta = do_two_opt(route,2,4)
 new_route,delta = do_two_opt(route,2,3)
 
 calc_distance(new_route)
+
