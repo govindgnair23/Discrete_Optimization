@@ -6,3 +6,5 @@ Score: 50/60
 ### Assignment 2: Graph Coloring
 Score: 45/60
 
+### Assignment 3: Travelling Salesman
+Score: 34/60
