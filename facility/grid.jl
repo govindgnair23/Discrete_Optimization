@@ -1,4 +1,8 @@
+##Solve problem by breaking up entire region into grids and solving sub-problem in each grid.
+
 #Assign each customer to nearest facility
+input_file = ARGS[1]
+
 
 using LinearAlgebra
 using Plots
@@ -24,10 +28,10 @@ Xc,Yc,Xf,Yf = [],[],[],[]
 
 firstLine = split(lines[1])
 #Number of facilites
-N_facilties = parse(Int64,firstLine[1])
+N_facilities = parse(Int64,firstLine[1])
 N_customers = parse(Int64,firstLine[2])
 
-for i ∈ range(2,stop=N_facilties+1)
+for i ∈ range(2,stop=N_facilities+1)
     line = lines[i]
     parts = split(line)
     push!(f,parse(Float64,parts[1]))
@@ -36,7 +40,7 @@ for i ∈ range(2,stop=N_facilties+1)
     push!(Yf,parse(Float64,parts[4]))
 end
 
-for i ∈ range(N_facilties+2,stop=N_facilties+N_customers+1)
+for i ∈ range(N_facilities+2,stop=N_facilities+N_customers+1)
     line = lines[i]
     parts = split(line)
     push!(a,parse(Int64,parts[1]))
@@ -50,9 +54,9 @@ q = convert(Array{Int64},q)
 a = convert(Array{Int64},a)
 
 #Transportation Costs
-global C = zeros(N_customers,N_facilties) # Computed for all customers and facilities
+global C = zeros(N_customers,N_facilities) # Computed for all customers and facilities
 for i in 1:N_customers
-    for j in 1:N_facilties
+    for j in 1:N_facilities
         C[i, j] = LinearAlgebra.norm([Xc[i] - Xf[j], Yc[i] - Yf[j]], 2)
     end
 end
@@ -63,32 +67,26 @@ assignment  = map(eachrow(C)) do r
     argmin(r)
 end
 
-y = zero(assignment)
-y[assignment] .= 1
+y = zero(1:N_facilities)
+
 
 
 #Get max coordinates to consider
 X_max = ceil(maximum([maximum(Xc),maximum(Xf)]))
 Y_max = ceil(maximum([maximum(Yc),maximum(Yf)]))
 
-
-N = 5 #No of cuts- creates N-1 partitions
-
-X_cuts = collect(range(0,X_max,length=5))
-Y_cuts = collect(range(0,Y_max,length=5))
-
-
-###Loop through all grids and solve
-
-for i ∈ 1:N-1
-    for j ∈ 1:N-1
-        X_grid = findall( x -> (X_cuts[i]<=x<=X_cuts[i+1]),Xc)
-        Y_grid = findall( y -> (Y_cuts[j]<=y<=Y_cuts[j+1]),Yc)
-        grid_customers = intersect(X_grid,Y_grid)
-
-        assignment = assign_facilities(grid_customers,assignment,C)
-    end
+if N_customers + N_facilities >= 1000
+    N = 20 #No of cuts- creates N-1 partitions
+elseif N_customers + N_facilities >= 500
+    N =  10
+elseif N_customers + N_facilities > 200
+    N = 5
+else
+    N = 2 #whole region will be considered 1 grid
 end
+
+X_cuts = collect(range(0,X_max,length=N))
+Y_cuts = collect(range(0,Y_max,length=N))
 
 ##Function to optimally assign a set of customers
 """
@@ -96,7 +94,7 @@ customers:: Set of customers to be assigned (1 D Array)
 assignment:: current assignment mapping each customer to a facility(1 D array)
 c:: cost matrix
 """
-function assign_facilities(customers::Vector{Int64},assignment::Vector{Int64})
+function assign_facilities(customers::Vector{Int64},assignment::Vector{Int64},a,f,q)
 
     #Get facilities assigned to these customers as per current solution
     facilities = assignment[customers]
@@ -160,97 +158,35 @@ module M
 end
 
 #Function to calculate total cost from an assignment
-function calc_cost(assignment::Vector{Int64},N_facilties)
+function calc_cost(assignment::Vector{Int64},N_facilities,C)
     #Get all opened facilities
     opened_facilities = unique(assignment)
     #Convert assignment to a matrix to get transportation costs with simple multiplication
-    x = M.OneHotMat(assignment,N_facilties)
+    x = M.OneHotMat(assignment,N_facilities)
     #Get transoration costs
     TC = sum(C.*x) 
     #Fixed Costs
     FC = sum(f[opened_facilities])
-    return TC+FC
+    return TC+FC,x
 end
 
-#######Try solving MIP with just customers and facilties in just one grid
-#Get all customers in the first grid
+###Loop through all grids and solve
+for i ∈ 1:N-1
+    for j ∈ 1:N-1
+        X_grid = findall( x -> (X_cuts[i]<=x<=X_cuts[i+1]),Xc)
+        Y_grid = findall( y -> (Y_cuts[j]<=y<=Y_cuts[j+1]),Yc)
+        grid_customers = intersect(X_grid,Y_grid)
 
-X_grid1 = findall( i -> (X_cuts[1]<=i<=X_cuts[2]),Xc)
-Y_grid1 = findall( i -> (Y_cuts[1]<=i<=Y_cuts[2]),Yc)
-grid1_customers = intersect(X_grid1,Y_grid1)
-
-#Get facilities assigned to these customers
-facilities = assignment[grid1_customers]
-
-#Get all customers assigned to these facilties
-custs = findall(i -> (i ∈ facilities),assignment)
-
-#Add these customers to the customers in the grid
-custs = unique(union(grid1_customers,custs))
-
-
-#Constuct a cost matrix for just these customers and facilties
-n_c = length(custs)
-n_f = length(facilities)
-c = zeros(n_c,n_f)
-
-for i in 1:n_c
-    for j in 1:n_f
-        c[i, j] = LinearAlgebra.norm([Xc[custs[i]] - Xf[facilities[j]], Yc[custs[i]] - Yf[facilities[j]]], 2)
+        assignment = assign_facilities(grid_customers,assignment,a,f,q)
     end
 end
 
-a_ = a[custs]
-q_ = q[facilities]
-f_ = f[facilities]
+#Get final assignment in matrix form and objective value
+cost,x = calc_cost(assignment,N_facilities,C)
 
-cfl = Model(HiGHS.Optimizer)
+#Set only opened facilities to 1
+y[unique(assignment)] .= 1
 
-@variable(cfl, y[1:n_f],Bin);
-@variable(cfl, x[1:n_c,1:n_f],Bin);
-
-#Each client is served from only one warehouse
-@constraint(cfl, client_service[i in 1:n_c], sum(x[i,:]) == 1);
-
-#Capacity constraint
-@constraint(cfl, capacity, x'a_ .<= (q_.*y));
-
-#Objective
-@objective(cfl,Min, f_'y + sum(c .* x));
-
-
-optimize!(cfl)
-
-obj_value = objective_value(cfl)
-
-
-#Visualize these customers and facilties
-Xc1 = Xc[custs]
-Yc1 = Yc[custs]
-Xf1 = Xf[facilities]
-Yf1 = Yf[facilities]
-
-#Update original assignment for these customers
-x_ = value.(x) .> 1 - 1e-5
-#Get index of column assigned 1
-i_ = map(i -> i[2],argmax(x_,dims=2))
-
-#Test function
-assign_facilities(grid1_customers,assignment,C)
-
-#Updates assignments to these customers
-assignment[custs] .= facilities[i_[:]]
-
-plot_solution(x,y,Xc1,Yc1,Xf1,Yf1)
-
-
-
-
-
-
-
-
-plot_locations(Xc1,Yc1,Xf1,Yf1)
 
 
 
@@ -320,3 +256,24 @@ function plot_solution(x,y,Xc,Yc,Xf,Yf)
     p
 
 end
+
+
+#plot_locations(Xc,Yc,Xf,Yf)
+#plot_solution(x,y,Xc,Yc,Xf,Yf)
+
+#############################################################################
+"""
+Function to render output in correct form
+item_count: No of items to select from
+selected_items: List of selected items by index
+value: Value of solution
+optimality_flag = 0
+"""
+function render_output(assignment,cost;optimality_flag=0)
+    @printf("%0.2f ",cost)
+    println("$optimality_flag")
+    println(join(assignment," "))
+end
+
+render_output(assignment,cost)
+
