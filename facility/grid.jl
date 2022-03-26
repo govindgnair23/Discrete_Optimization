@@ -5,9 +5,10 @@ input_file = ARGS[1]
 
 
 using LinearAlgebra
-using Plots
+#using Plots
 import HiGHS
 using JuMP
+using Printf
 
 file = open(input_file)
 input_data = read(file,String)
@@ -115,6 +116,7 @@ function assign_facilities(customers::Vector{Int64},assignment::Vector{Int64},a,
     f_ = f[facilities]
 
     cfl = Model(HiGHS.Optimizer)
+    set_optimizer_attribute(cfl,"log_to_console",false)
 
     @variable(cfl, y[1:n_f],Bin);
     @variable(cfl, x[1:n_c,1:n_f],Bin);
@@ -170,92 +172,100 @@ function calc_cost(assignment::Vector{Int64},N_facilities,C)
     return TC+FC,x
 end
 
-###Loop through all grids and solve
-for i ∈ 1:N-1
-    for j ∈ 1:N-1
-        X_grid = findall( x -> (X_cuts[i]<=x<=X_cuts[i+1]),Xc)
-        Y_grid = findall( y -> (Y_cuts[j]<=y<=Y_cuts[j+1]),Yc)
-        grid_customers = intersect(X_grid,Y_grid)
-
-        assignment = assign_facilities(grid_customers,assignment,a,f,q)
-    end
-end
-
-#Get final assignment in matrix form and objective value
-cost,x = calc_cost(assignment,N_facilities,C)
-
-#Set only opened facilities to 1
-y[unique(assignment)] .= 1
 
 
-
-
-function plot_locations(Xc,Yc,Xf,Yf)
-    p = Plots.scatter(
-        Xc,
-        Yc,
-        label = nothing,
-        markershape = :circle,
-        markercolor = :blue,
-    )
-
-    Plots.scatter!(
-    Xf,
-    Yf,
-    label = nothing,
-    markershape = :rect,
-    markerstrokecolor = :red,
-    markerstrokewidth = 2,
-    )
-
-    p
-end
-
-function plot_solution(x,y,Xc,Yc,Xf,Yf)
-    x_ = value.(x) .> 1 - 1e-5;
-    y_ = value.(y) .> 1 - 1e-5;
-    N_customers,N_facilities = size(x) 
-
-    p = Plots.scatter(
-        Xc,
-        Yc,
-        label = nothing,
-        markershape = :circle,
-        markercolor = :blue,
-    )
-
-
-    #mc = [(y_[j] ? :red : :white) for j in 1:N_facilities]
-
-
-
-    Plots.scatter!(
-        Xf[y_],
-        Yf[y_],
-        label = nothing,
-        markershape = :rect,
-        markercolor = :red,
-        markerstrokecolor = :red,
-        markerstrokewidth = 2,
-    )
-
-    for i in 1:N_customers
-        for j in 1:N_facilities
-            if x_[i,j] == 1
-                Plots.plot!(
-                    [Xc[i],Xf[j]],
-                    [Yc[i], Yf[j]],
-                    color = :black,
-                    label = nothing,
-                )
-                break
-            end
+function solve_problem(X_cuts,Y_cuts,assignment)
+    N = length(X_cuts)
+    ###Loop through all grids and solve
+    for i ∈ 1:N-1
+        for j ∈ 1:N-1
+            X_grid = findall( x -> (X_cuts[i]<=x<=X_cuts[i+1]),Xc)
+            Y_grid = findall( y -> (Y_cuts[j]<=y<=Y_cuts[j+1]),Yc)
+            grid_customers = intersect(X_grid,Y_grid)
+            assignment = assign_facilities(grid_customers,assignment,a,f,q)
         end
     end
-
-    p
-
+    return assignment
 end
+
+
+final_assignment = solve_problem(X_cuts,Y_cuts,assignment)
+
+#Get final assignment in matrix form and objective value
+cost,x = calc_cost(final_assignment,N_facilities,C)
+
+#Set only opened facilities to 1
+y[unique(final_assignment)] .= 1
+
+
+
+
+# function plot_locations(Xc,Yc,Xf,Yf)
+#     p = Plots.scatter(
+#         Xc,
+#         Yc,
+#         label = nothing,
+#         markershape = :circle,
+#         markercolor = :blue,
+#     )
+
+#     Plots.scatter!(
+#     Xf,
+#     Yf,
+#     label = nothing,
+#     markershape = :rect,
+#     markerstrokecolor = :red,
+#     markerstrokewidth = 2,
+#     )
+
+#     p
+# end
+
+# function plot_solution(x,y,Xc,Yc,Xf,Yf)
+#     x_ = value.(x) .> 1 - 1e-5;
+#     y_ = value.(y) .> 1 - 1e-5;
+#     N_customers,N_facilities = size(x) 
+
+#     p = Plots.scatter(
+#         Xc,
+#         Yc,
+#         label = nothing,
+#         markershape = :circle,
+#         markercolor = :blue,
+#     )
+
+
+#     #mc = [(y_[j] ? :red : :white) for j in 1:N_facilities]
+
+
+
+#     Plots.scatter!(
+#         Xf[y_],
+#         Yf[y_],
+#         label = nothing,
+#         markershape = :rect,
+#         markercolor = :red,
+#         markerstrokecolor = :red,
+#         markerstrokewidth = 2,
+#     )
+
+#     for i in 1:N_customers
+#         for j in 1:N_facilities
+#             if x_[i,j] == 1
+#                 Plots.plot!(
+#                     [Xc[i],Xf[j]],
+#                     [Yc[i], Yf[j]],
+#                     color = :black,
+#                     label = nothing,
+#                 )
+#                 break
+#             end
+#         end
+#     end
+
+#     p
+
+# end
 
 
 #plot_locations(Xc,Yc,Xf,Yf)
@@ -275,5 +285,6 @@ function render_output(assignment,cost;optimality_flag=0)
     println(join(assignment," "))
 end
 
-render_output(assignment,cost)
+final_assignment = final_assignment .- 1 # Solution requires indexing from 0
+render_output(final_assignment,cost)
 
