@@ -62,11 +62,29 @@ for i in 1:N_customers
     end
 end
 
-#Find closest facility to each customer
+#######Greedy feasible solution ###########
+#Find closest facility to each customer, if the facility is already full, assign to next closest facility
+facility_loads = zeros(N_facilities)
+assignment = zeros(Int64,N_customers)
 
-assignment  = map(eachrow(C)) do r
-    argmin(r)
+for i ∈ 1:N_customers
+    #Get nearest facilities to customer i
+    closest_facilities = sortperm(C[i,:])
+    assigned = false
+    j = 1 # Start by assigning closest facility
+    while !assigned #while the customer has not been assigned to a facility
+        assigned_facility = closest_facilities[j]  #Start by assigning closest facility
+        if a[i] <= q[assigned_facility] - facility_loads[assigned_facility] #If there is enough room to accomodate new customer
+            assignment[i] = assigned_facility
+            facility_loads[assigned_facility] +=a[i] # Add to facilitiy's assigned facility_loads
+            assigned = true
+        else
+            j += 1 #Try next clostest facility
+        end
+    end
+
 end
+
 
 y = zero(1:N_facilities)
 
@@ -85,6 +103,7 @@ elseif N_customers + N_facilities > 200
 else
     N = 2 #whole region will be considered 1 grid
 end
+
 
 X_cuts = collect(range(0,X_max,length=N))
 Y_cuts = collect(range(0,Y_max,length=N))
@@ -108,6 +127,10 @@ function assign_facilities(customers::Vector{Int64},assignment::Vector{Int64},a,
 
     n_c = length(custs) # Number of customers in this sub-problem
     n_f = length(facilities) #Number of facilities in this sub-problem
+
+    if n_f <= 1 # If there is only one facility for a customer to be assigned to there is no optimization ptoblem
+        return assignment
+    end
     #Cost matrix for just these customers and facilities
     c_ = C[custs,facilities]
 
@@ -174,7 +197,7 @@ end
 
 
 
-function solve_problem(X_cuts,Y_cuts,assignment)
+function solve_problem(X_cuts,Y_cuts,assignment,a,f,q)
     N = length(X_cuts)
     ###Loop through all grids and solve
     for i ∈ 1:N-1
@@ -182,14 +205,17 @@ function solve_problem(X_cuts,Y_cuts,assignment)
             X_grid = findall( x -> (X_cuts[i]<=x<=X_cuts[i+1]),Xc)
             Y_grid = findall( y -> (Y_cuts[j]<=y<=Y_cuts[j+1]),Yc)
             grid_customers = intersect(X_grid,Y_grid)
-            assignment = assign_facilities(grid_customers,assignment,a,f,q)
+            new_assignment = assign_facilities(grid_customers,assignment,a,f,q)
+            assignment = new_assignment
         end
     end
     return assignment
 end
 
 
-final_assignment = solve_problem(X_cuts,Y_cuts,assignment)
+final_assignment = solve_problem(X_cuts,Y_cuts,assignment,a,f,q)
+
+
 
 #Get final assignment in matrix form and objective value
 cost,x = calc_cost(final_assignment,N_facilities,C)
