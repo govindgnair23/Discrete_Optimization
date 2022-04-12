@@ -99,7 +99,7 @@ if N_customers + N_facilities >= 1000
     N = 20 #No of cuts- creates N-1 partitions
 elseif N_customers + N_facilities >= 500
     N =  10
-elseif N_customers + N_facilities > 200
+elseif N_customers + N_facilities > 250
     N = 5
 else
     N = 2 #whole region will be considered 1 grid
