@@ -5,7 +5,7 @@ input_file = ARGS[1]
 
 
 using LinearAlgebra
-#using Plots
+using Plots
 import HiGHS
 using JuMP
 using Printf
@@ -86,6 +86,7 @@ for i ∈ 1:N_customers
 end
 
 
+
 y = zero(1:N_facilities)
 
 
@@ -114,10 +115,10 @@ customers:: Set of customers to be assigned (1 D Array)
 assignment:: current assignment mapping each customer to a facility(1 D array)
 c:: cost matrix
 """
-function assign_facilities(customers::Vector{Int64},assignment::Vector{Int64},a,f,q)
+function assign_facilities(customers::Vector{Int64},assignment::Vector{Int64},a,f,q,C)
 
     #Get facilities assigned to these customers as per current solution
-    facilities = assignment[customers]
+    facilities = unique(assignment[customers])
 
     #Get all customers assigned to these facilties
     custs = findall(i -> (i ∈ facilities),assignment)
@@ -205,12 +206,13 @@ function solve_problem(X_cuts,Y_cuts,assignment,a,f,q)
             X_grid = findall( x -> (X_cuts[i]<=x<=X_cuts[i+1]),Xc)
             Y_grid = findall( y -> (Y_cuts[j]<=y<=Y_cuts[j+1]),Yc)
             grid_customers = intersect(X_grid,Y_grid)
-            new_assignment = assign_facilities(grid_customers,assignment,a,f,q)
+            new_assignment = assign_facilities(grid_customers,assignment,a,f,q,C)
             assignment = new_assignment
         end
     end
     return assignment
 end
+
 
 
 final_assignment = solve_problem(X_cuts,Y_cuts,assignment,a,f,q)
@@ -223,9 +225,18 @@ cost,x = calc_cost(final_assignment,N_facilities,C)
 #Set only opened facilities to 1
 y[unique(final_assignment)] .= 1
 
+#########Test whether any facility constraints were violated ######
+
+# facility_loads2 =  zeros(N_facilities)
+# for i ∈ 1:N_facilities
+#     custs_i = findall(c -> c== i, final_assignment)
+#     facility_loads2[i] = sum(a[custs_i])
+# end
+
+# sum(facility_loads2 .> q)
 
 
-
+##########################################################################
 # function plot_locations(Xc,Yc,Xf,Yf)
 #     p = Plots.scatter(
 #         Xc,
