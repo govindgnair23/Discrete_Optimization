@@ -16,8 +16,8 @@ def solve_it(input_data):
 
     # proc = Popen(['julia', 'greedy.jl',tmpFileName],stdout=PIPE)
     #proc = Popen(['julia', 'DP.jl',tmpFileName],stdout=PIPE)
-    #proc = Popen(['julia', 'TwoOpt_SE_greedy_restarts.jl',tmpFileName],stdout=PIPE)
-    proc = Popen(['julia', 'tsp_mip.jl',tmpFileName],stdout=PIPE)
+    proc = Popen(['julia', 'TwoOpt_SE_greedy_restarts.jl',tmpFileName],stdout=PIPE)
+    
     
 
     (out,err) = proc.communicate()

@@ -16,8 +16,8 @@ def solve_it(input_data):
 
     # proc = Popen(['julia', 'greedy.jl',tmpFileName],stdout=PIPE)
     #proc = Popen(['julia', 'DP.jl',tmpFileName],stdout=PIPE)
-    proc = Popen(['julia', 'TwoOpt_longest.jl',tmpFileName],stdout=PIPE)
-    
+    #proc = Popen(['julia', 'TwoOpt_longest.jl',tmpFileName],stdout=PIPE)
+    proc = Popen(['julia', 'ThreeOptv2.jl',tmpFileName],stdout=PIPE)
 
     (out,err) = proc.communicate()
     os.remove(tmpFileName)

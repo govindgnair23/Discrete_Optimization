@@ -7,7 +7,8 @@ Score: 50/60
 Score: 45/60
 
 ### Assignment 3: Travelling Salesman
-Score: 34/60
+Score: 43/60
 
 ### Assignment 4: Facility Location
 Score: 57/80
+
