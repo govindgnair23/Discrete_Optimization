@@ -12,3 +12,5 @@ Score: 43/60
 ### Assignment 4: Facility Location
 Score: 57/80
 
+### Assignment 5: Vehicle Routing
+Score: 48/60
